@@ -38,7 +38,7 @@ int main(int argc, char const *argv[])
     
     if(m == (mqd_t)-1)
     {
-        printf("\nCrytical error: cannot open the channel to the server.\nExiting...\n");
+        printf("\nCrytical error: cannot open the message queue.\nExiting...\n");
         return 1;
     }
 
