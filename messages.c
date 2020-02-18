@@ -1,4 +1,4 @@
-//build with -lrt
+/*build with -lrt */
 #include<stdlib.h>
 #include<stdio.h>
 #include<pthread.h>
@@ -13,18 +13,19 @@
 
 struct mq_attr at;
 
-
 int main(int argc, char const *argv[])
 {
-    mqd_t m, rm; //m is the server handle, rm is the client handle
+    mqd_t m, rm; /*m is the server handle, rm is the client handle */
     printf("App started.\nTo terminate, press CTRL+C");
     char q[BUF_SIZE];
     char address[30];
-    uint8_t command;
+    uint8_t command; /*command 1 is used to tell the server to send a ticket number*/
     at.mq_maxmsg = 30;
     at.mq_msgsize = BUF_SIZE;
     at.mq_flags = 0;
-    //check in what mode the program was started (with arguments = server, no arguments = client)
+    uint32_t i = 1; /*a counter for sending a unique ticket number to the clients */
+
+    /*check in what mode the program was started (with arguments = server, no arguments = client) */
     if(argc > 1)
     {
         printf("\nRunning in server mode.");
@@ -42,25 +43,15 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
-    struct mq_attr attr; //used for checking the status of the message queues
 
-    if(argc > 1) //server mode
+    if(argc > 1) /*server mode */
     {
         printf("\nWill serve ticket numbers in ascending order to the clients.");
-        uint32_t i = 1; //a counter for sending a unique ticket number to the clients
         while(1)
         {
-            mq_getattr(m, &attr);
-            printf("\n------------------------------\n");
-            printf("\nWaiting for a request...");
-            while(attr.mq_curmsgs < 1)
-            {
-                mq_getattr(m, &attr);
-            }
-            //when there is a message in the queue, capture and decode it
             mq_receive(m, q, BUF_SIZE, 0);
-            //we don't need to check the validity of the message
-            //if it is invalid the server won't be able to open the message queue and will give up
+            /*we don't need to check the validity of the message */
+            /*if it is invalid the server won't be able to open the message queue and will give up*/
             strcpy(address, strtok(q, " "));
             command = atoi(strtok(NULL, " "));
             printf("\nReceived command %d from %s", command, address);
@@ -84,23 +75,23 @@ int main(int argc, char const *argv[])
             }
         }
     }
-    else //client mode
+    else /*client mode */
     {
-        //the address is generated from the thread ID of the running client, in the following format: "/<thread id>"
+        /*the address is generated from the thread ID of the running client, in the following format: "/<thread id>" */
         printf("\nGenerating a unique address: ");
         sprintf(address, "/%lu", pthread_self());
         printf("%s", address);
         printf("\nWill ask for a ticket number every 1-5 seconds");
         while(1)
         {
-            //pseudo-random sleep timer for 1-5 seconds
+            /*pseudo-random sleep timer for 1-5 seconds */
             sleep(1 + rand() % 5);
 
-            //craft the packet with the return address and command, separated by a space
+            /*craft the packet with the return address and command, separated by a space */
             command = 1;
             sprintf(q, "%s %d", address, command);
 
-            //open a message queue for receiving the response from the server
+            /*open a message queue for receiving the response from the server */
             printf("\n------------------------------\n");
             printf("\nOpening a message queue");
             rm = mq_open(address, O_CREAT | O_RDWR, 0666, &at);
@@ -111,24 +102,17 @@ int main(int argc, char const *argv[])
                 return 0;
             }
 
-            //send the request to the server
+            /*send the request to the server*/
             printf("\nSending request %s", q);
             mq_send(m, q, BUF_SIZE, 0);
             q[0] = '\0';
 
-            //wait for a response
-            mq_getattr(rm, &attr);
-            while(attr.mq_curmsgs < 1)
-            {
-                mq_getattr(rm, &attr);
-            }
-
-            //receive the response and display it
+            /*Get the response and display it*/
             mq_receive(rm, q, BUF_SIZE, 0);
             printf("\nReceived %s", q);
 
-            mq_close(rm); //close the queue
-            mq_unlink(address); //delete it
+            mq_close(rm); /*close the queue */
+            mq_unlink(address); /*delete it */
             printf("\nSleeping...");
         }
     }
